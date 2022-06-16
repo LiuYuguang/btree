@@ -4,68 +4,63 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
+#include <time.h>
 #include "btree.h"
 
+#define COUNT 1000000L
+
 int main(){
-    btree *T = NULL;
-    srand(getpid()^time(NULL));
-    int nums[1000000],i,j,k;
-    int n = 1,rc;
+    btree *tree = NULL;
+    int *nums,i,j,k,rc;
     intptr_t value;
-    while(n-- > 0){
-        for(i=0;i<sizeof(nums)/sizeof(int);i++){
-            nums[i] = i;
-        }
+    clock_t t;
 
-        for(i=sizeof(nums)/sizeof(int);i>0;i--){
-            j = rand()%i;
-            k = nums[j];
-            nums[j] = nums[i-1];
-            nums[i-1] = k;
-        }
-        
-        T = NULL;
-        assert(btree_create(4096,&T)==0);
+    nums = malloc(sizeof(int) * COUNT);
+    assert(nums != NULL);
 
-        for(i=0;i<sizeof(nums)/sizeof(int)/2;i++){
-            rc = btree_insert(T,nums[i],nums[i],1);
-            assert(rc);
-        }
-
-        assert(btree_count(T) == sizeof(nums)/sizeof(int)/2);
-
-        for(i=0;i<sizeof(nums)/sizeof(int)/2;i++){
-            rc = btree_search(T,nums[i],&value);
-            assert(rc && nums[i] == value);
-        }
-
-        for(i=0;i<sizeof(nums)/sizeof(int)/2;i++){
-            rc = btree_search(T,i,&value);
-            assert(!rc || (rc && i == value));
-        }
-
-        for(i=0;i<sizeof(nums)/sizeof(int);i++){
-            rc = btree_delete(T,i,&value);
-            assert(!rc || (rc && i == value));
-        }
-
-        for(i=sizeof(nums)/sizeof(int)/2;i<sizeof(nums)/sizeof(int);i++){
-            rc = btree_insert(T,nums[i],nums[i],1);
-            assert(rc);
-        }
-
-        for(i=sizeof(nums)/sizeof(int)/2;i<sizeof(nums)/sizeof(int);i++){
-            rc = btree_search(T,nums[i],&value);
-            assert(rc && nums[i] == value);
-        }
-
-        for(i=0;i<sizeof(nums)/sizeof(int);i++){
-            rc = btree_delete(T,i,&value);
-            assert(!rc || (rc && i == value));
-        }
-
-        assert(btree_count(T) == 0);
-        btree_free(T,0);
+    for(i=0;i<COUNT;i++){
+        nums[i] = i;
     }
+
+    srand(getpid()^time(NULL));
+    for(i=COUNT;i>0;i--){
+        j = rand()%i;
+        k = nums[j];
+        nums[j] = nums[i-1];
+        nums[i-1] = k;
+    }
+
+    assert(btree_create(4096,&tree)==0);
+
+    t = clock();
+    for(i=0;i<COUNT;i++){
+        rc = btree_insert(tree,nums[i],nums[i],1);
+        assert(rc);
+    }
+    t = clock() - t;
+    printf("insert %ld use %ldus, per %lfus\n",COUNT, t, t/(double)COUNT);
+
+    assert(btree_count(tree) == COUNT);
+
+    t = clock();
+    for(i=0;i<COUNT;i++){
+        rc = btree_search(tree,nums[i],&value);
+        assert(rc && nums[i] == value);
+    }
+    t = clock() - t;
+    printf("search %ld use %ldus, per %lfus\n",COUNT,t,t/(double)COUNT);
+
+    t  = clock();
+    for(i=0;i<COUNT;i++){
+        rc = btree_delete(tree,nums[i],&value);
+        assert(rc && nums[i] == value);
+    }
+    printf("delete %ld use %ldus, per %lfus\n", COUNT, t, t/(double)COUNT);
+
+    assert(btree_count(tree) == 0);
+
+    btree_free(tree,0);
+
+    free(nums);
     return 0;
 }
